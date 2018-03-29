@@ -1,0 +1,12 @@
+# temp files
+*~
+
+# python build stuff
+__pycache__
+*.pyc
+
+# directories
+build/
+
+# notebooks
+*.ipynb
