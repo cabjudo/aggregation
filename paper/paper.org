@@ -1,0 +1,84 @@
+#+options: date:nill
+#+title: Aggregation as a nonlinear operation in CNNs
+#+author: Christine Allen-Blanchette
+
+
+* Introduction
+Here we question the nonlinear units used in CNNs. First some motivation/background
+
+* Thinking about the first layer
+The filters learned in the first layer of a CNN look very much like Gabors.
+
+** Gabor
+Signals can be decomposed onto a filter bank of Gabors with different frequency and orientation selectivity.
+We observe that the filter bank in the first convolutional layer of CNNs typically looks like Gabors.
+
+** HOG
+A projection onto a Gabor filter bank gives you a descriptor similar to the HOG descriptor.
+A HOG descriptor is a histogram of the strength of an edge in a specific orientation.
+
+A couple notes about HOG cite:dalal2005histograms. In practice the utility of this representation 
+depends on normalization of the resulting histogram and the use of fine grain edge detectors.
+
+** ReLU
+If we accept that the features in the first layer are (in spirit) HOG features what happens when 
+we apply an element-wise Rectified Linear Unit (ReLU) to the histogram representation.
+
+The ReLU acts to attenuate portions of the signal (elements of the histogram) with values less than zero.
+
+What is the effect of this? Suppose the patch we are filtering has a high negative response to one of 
+the filters in our filter bank. This information has proven useful in descriptor matching cite:dalal2005histograms;
+however, application of the ReLU operator will remove that part of the signal.
+We hypothesize, because the information is useful, the ReLU, in effect, forces the network to learn 
+an additional filter exactly out of phase with the aforementioned. 
+
+What is the consequence of requiring an additional filter? On the surface it appears it is of no 
+consequence; however, it is often observed cite:szegedy2013intriguing cite:zhang2016understanding
+that in our understanding of machine learning (outside of NNs) a CNN has far too many parameters to 
+generalize well. While this is contradictory to emperical evidence, it may in fact be contributing to the 
+suseptibility of CNNs to adversarial examples.
+
+* What can we do differently
+We consider prior work on SIFT/HOG-like descriptor aggregation techniques and the recently popularized approach, 
+Capsule Networks cite:sabour2017dynamic
+
+** VLAD and other clustering based approaches
+This aggregation technique requires a clustering step before descriptor generation can occur. 
+The descriptor is simply a vector of the distances of neighboring (in space) descriptors from their associated
+respective cluster centers. The descriptor is normalized but can contain negative values.
+
+** DPM and other deformable template models
+
+
+** Capsule Networks
+
+* Interpretations of CNNs with nonlinear aggregation layers
+Several authors have proposed interesting and insightful interpretations of CNNs cite:mallat2016understanding. 
+Use of the nonlinear aggregation layer allows us to apply our intuition and understanding of standard low/mid/high level computer vision
+descriptors toward the interpretation of CNNs in a more compelling way.
+
+** Architecture
+We introduce the nonlinear aggregation layer in place of the ReLU and change nothing else about the network.
+
+** The conv layer
+The convolution layer can be interpreted as a projection of image regions onto a basis of filters.
+
+** Aggregation layer
+This layer can be interpreted as a clustering step
+
+** Wholistic interpretation
+Through this approach the interpretation of the CNN as a tool to construct hierarchical part representations is quite natural.
+This is an attractive interpretation given a historical perspective of computer vision 
+(e.g. pictoral structures, DPM, Capsule Networks).
+
+* Observations on Equivariance
+The equivariant properties of CNNs is of significant interest. The translation equivariance of standard CNNs 
+allows the network to ultimately exhibit translation invariance at the classification stage.
+The rotational equivariance of cite:worrall2016harmonic is achieved by constraining the types of filters 
+the CNN is allowed to learn. This approach leads to a reduction in the number of parameters and 
+gives room for the CNN to allocate more learning time to discriminating inter-class similarity
+instead impartiality of inter-class variation (the network doesn't need to learn (equi/in)variance to rotations).
+
+
+bibliographystyle:plain
+bibliography:bib.bib
