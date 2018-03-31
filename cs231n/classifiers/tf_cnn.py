@@ -1,4 +1,6 @@
+import os
 import argparse
+
 import tensorflow as tf
 import numpy as np
 
@@ -6,9 +8,10 @@ from cs231n.data_utils import load_CIFAR10
 
         
 class Baseline(object):
-    def __init__(self, logdir):
+    def __init__(self, logdir, savedir):
         self.feature_maps = {}
         self.logdir = logdir
+        self.savedir = savedir
         
     def import_data(self, data, labels, num_epochs, batch_size):
         self.num_epochs=num_epochs
@@ -32,29 +35,37 @@ class Baseline(object):
             # accuracy
             tf.summary.scalar("accuracy", self.accuracy)
             
-            # weights
-            tf.summary.histogram("weight_conv1", tf.trainable_variables('network/layer1/conv/kernel')[0])
-            tf.summary.histogram("weight_conv2", tf.trainable_variables('network/layer2/conv/kernel')[0])
-            tf.summary.histogram("weight_conv3", tf.trainable_variables('network/layer3/conv/kernel')[0])
-            tf.summary.histogram("weight_conv4", tf.trainable_variables('network/layer4/conv/kernel')[0])
-            tf.summary.histogram("weight_conv5", tf.trainable_variables('network/layer5/conv/kernel')[0])
-            tf.summary.histogram("weight_conv6", tf.trainable_variables('network/layer6/conv/kernel')[0])
+            # # weights
+            # tf.summary.histogram("weight_conv1", tf.trainable_variables('network/layer1/conv/kernel')[0])
+            # tf.summary.histogram("weight_conv2", tf.trainable_variables('network/layer2/conv/kernel')[0])
+            # tf.summary.histogram("weight_conv3", tf.trainable_variables('network/layer3/conv/kernel')[0])
+            # tf.summary.histogram("weight_conv4", tf.trainable_variables('network/layer4/conv/kernel')[0])
+            # tf.summary.histogram("weight_conv5", tf.trainable_variables('network/layer5/conv/kernel')[0])
+            # tf.summary.histogram("weight_conv6", tf.trainable_variables('network/layer6/conv/kernel')[0])
 
-            # bias
-            tf.summary.histogram("bias_conv1", tf.trainable_variables('network/layer1/conv/bias')[0])
-            tf.summary.histogram("bias_conv2", tf.trainable_variables('network/layer2/conv/bias')[0])
-            tf.summary.histogram("bias_conv3", tf.trainable_variables('network/layer3/conv/bias')[0])
-            tf.summary.histogram("bias_conv4", tf.trainable_variables('network/layer4/conv/bias')[0])
-            tf.summary.histogram("bias_conv5", tf.trainable_variables('network/layer5/conv/bias')[0])
-            tf.summary.histogram("bias_conv6", tf.trainable_variables('network/layer6/conv/bias')[0])
+            # # bias
+            # tf.summary.histogram("bias_conv1", tf.trainable_variables('network/layer1/conv/bias')[0])
+            # tf.summary.histogram("bias_conv2", tf.trainable_variables('network/layer2/conv/bias')[0])
+            # tf.summary.histogram("bias_conv3", tf.trainable_variables('network/layer3/conv/bias')[0])
+            # tf.summary.histogram("bias_conv4", tf.trainable_variables('network/layer4/conv/bias')[0])
+            # tf.summary.histogram("bias_conv5", tf.trainable_variables('network/layer5/conv/bias')[0])
+            # tf.summary.histogram("bias_conv6", tf.trainable_variables('network/layer6/conv/bias')[0])
+            for var in tf.trainable_variables():
+                tf.summary.histogram(var.name, var)
 
-            # feature maps
-            tf.summary.histogram('feature_map1', self.feature_maps['layer1_h'])
-            tf.summary.histogram('feature_map2', self.feature_maps['layer2_h'])
-            tf.summary.histogram('feature_map3', self.feature_maps['layer3_h'])
-            tf.summary.histogram('feature_map4', self.feature_maps['layer4_h'])
-            tf.summary.histogram('feature_map5', self.feature_maps['layer5_h'])
-            tf.summary.histogram('feature_map6', self.feature_maps['layer6_h'])
+            # Summarize all gradients
+            grads = tf.gradients(self.mean_loss, tf.trainable_variables())
+            grads = list(zip(grads, tf.trainable_variables()))
+            for grad, var in grads:
+                tf.summary.histogram(var.name + '/gradient', grad)
+
+            # # feature maps
+            # tf.summary.histogram('feature_map1', self.feature_maps['layer1_h'])
+            # tf.summary.histogram('feature_map2', self.feature_maps['layer2_h'])
+            # tf.summary.histogram('feature_map3', self.feature_maps['layer3_h'])
+            # tf.summary.histogram('feature_map4', self.feature_maps['layer4_h'])
+            # tf.summary.histogram('feature_map5', self.feature_maps['layer5_h'])
+            # tf.summary.histogram('feature_map6', self.feature_maps['layer6_h'])
             
             # because you have several summaries, we should merge them all
             # into one op to make it easier to manage
@@ -97,7 +108,8 @@ class Baseline(object):
 
     def optimize(self, learning_rate=1e-3):
         with tf.name_scope('optimize'):
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.mean_loss)
+            self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.mean_loss, global_step=self.global_step)
 
             
     def setup(self, data, labels, num_epochs=1, batch_size=64):
@@ -105,22 +117,35 @@ class Baseline(object):
         self.predict()
         self.optimize()
         
-    def train(self, print_every=-1):
-        step = 0
+    def train(self, print_every=-1, save_every=-1, seed=0):
         print('epochs: ', self.num_epochs, 'batch size: ', self.batch_size)
+        tf.set_random_seed(seed)
+        saver = tf.train.Saver()
+        
+        step = 0
         with tf.Session() as sess:
             writer = tf.summary.FileWriter(self.logdir, sess.graph)
             self.logging()
             
             sess.run(self.data_init)
             sess.run(tf.global_variables_initializer())
+
+            # if a checkpoint exists, restore from the latest checkpoint
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname(self.savedir))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+            
             try:
                 while True:
                     _, a, l, summary = sess.run([self.optimizer, self.accuracy, self.mean_loss, self.summary_op])
-                    if (step % print_every)==0:
-                        print('accuracy: ', a, 'loss: ', l, 'step: ', step)
                     writer.add_summary(summary, global_step=step)
                     step += 1
+
+                    if (step % print_every) == 0:
+                        print('accuracy: ', a, 'loss: ', l, 'step: ', step)
+                    if (step % save_every) == 0:
+                        saver.save(sess, self.savedir, global_step=self.global_step)
+                        
             except tf.errors.OutOfRangeError:
                 pass
         
@@ -216,10 +241,12 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Run CNNs with various nonlinearities')
     parser.add_argument('-network', default='relu', choices=models)
-    parser.add_argument('-logdir', default='graphs/relu/')
-    parser.add_argument('-epochs', default=1, type=np.int)
+    # parser.add_argument('-logdir', default='graphs/relu/')
+    # parser.add_argument('-savedir', default='checkpoints/relu/')    
+    parser.add_argument('-epochs', default=5, type=np.int)
     parser.add_argument('-batch_size', default=64, type=np.int)
     parser.add_argument('-print_every', default=-1, type=np.int)
+    parser.add_argument('-save_every', default=-1, type=np.int)
     args = parser.parse_args()
 
     # Invoke the above function to get our data.
@@ -230,7 +257,11 @@ if __name__ == "__main__":
     print('Validation labels shape: ', y_val.shape)
     print('Test data shape: ', X_test.shape)
     print('Test labels shape: ', y_test.shape)
+
+    network_name = args.network
+    logdir = 'graphs/' + network_name
+    savedir = 'checkpoints/' + network_name
     
-    my_model = models[args.network](args.logdir)
+    my_model = models[network_name](logdir, savedir)
     my_model.setup(X_train, y_train, num_epochs=args.epochs, batch_size=args.batch_size)
-    my_model.train(print_every=args.print_every)
+    my_model.train(print_every=args.print_every, save_every=args.save_every)
