@@ -210,8 +210,8 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description='Run CNNs with various nonlinearities')
     parser.add_argument('-network', default='relu', choices=models)
-    # parser.add_argument('-logdir', default='graphs/relu/')
-    # parser.add_argument('-savedir', default='checkpoints/relu/')    
+    parser.add_argument('-logdir', default='graphs/')
+    parser.add_argument('-savedir', default='checkpoints/')    
     parser.add_argument('-epochs', default=5, type=np.int)
     parser.add_argument('-batch_size', default=64, type=np.int)
     parser.add_argument('-print_every', default=-1, type=np.int)
@@ -230,8 +230,8 @@ if __name__ == "__main__":
     # print('Test labels shape: ', data['y_test'].shape)
 
     network_name = args.network
-    logdir = 'graphs/' + network_name
-    savedir = 'checkpoints/' + network_name
+    # logdir = 'graphs/' + network_name
+    # savedir = 'checkpoints/' + network_name
     
     my_model = models[network_name](logdir, savedir)
     my_model.setup(data['X_train'], data['y_train'], num_epochs=args.epochs, batch_size=args.batch_size)
