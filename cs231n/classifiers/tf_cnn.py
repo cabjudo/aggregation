@@ -216,11 +216,12 @@ if __name__ == "__main__":
     parser.add_argument('-batch_size', default=64, type=np.int)
     parser.add_argument('-print_every', default=-1, type=np.int)
     parser.add_argument('-save_every', default=-1, type=np.int)
+    parser.add_argument('-datadir', default='cs231n/datasets/cifar-10-batches-py', type=str)
     args = parser.parse_args()
 
     # Invoke the above function to get our data.
     # X_train, y_train, X_val, y_val, X_test, y_test = get_CIFAR10_data()
-    data = get_CIFAR10_data()
+    data = get_CIFAR10_data(cifar10_dir=args.datadir)
     # print('Train data shape: ', data['X_train'].shape)
     # print('Train labels shape: ', data['y_train'].shape)
     # print('Validation data shape: ', data['X_val'].shape)
