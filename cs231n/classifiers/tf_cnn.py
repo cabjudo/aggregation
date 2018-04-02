@@ -230,6 +230,8 @@ if __name__ == "__main__":
     # print('Test labels shape: ', data['y_test'].shape)
 
     network_name = args.network
+    logdir = args.logdir
+    savedir = args.savedir
     # logdir = 'graphs/' + network_name
     # savedir = 'checkpoints/' + network_name
     
