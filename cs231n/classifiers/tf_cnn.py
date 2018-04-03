@@ -12,6 +12,7 @@ class Baseline(object):
         self.feature_maps = {}
         self.logdir = logdir
         self.savedir = savedir
+        self.sess_config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=True)
         
     def import_data(self, data, labels, num_epochs, batch_size):
         self.num_epochs=num_epochs
@@ -35,21 +36,6 @@ class Baseline(object):
             # accuracy
             tf.summary.scalar("accuracy", self.accuracy)
             
-            # # weights
-            # tf.summary.histogram("weight_conv1", tf.trainable_variables('network/layer1/conv/kernel')[0])
-            # tf.summary.histogram("weight_conv2", tf.trainable_variables('network/layer2/conv/kernel')[0])
-            # tf.summary.histogram("weight_conv3", tf.trainable_variables('network/layer3/conv/kernel')[0])
-            # tf.summary.histogram("weight_conv4", tf.trainable_variables('network/layer4/conv/kernel')[0])
-            # tf.summary.histogram("weight_conv5", tf.trainable_variables('network/layer5/conv/kernel')[0])
-            # tf.summary.histogram("weight_conv6", tf.trainable_variables('network/layer6/conv/kernel')[0])
-
-            # # bias
-            # tf.summary.histogram("bias_conv1", tf.trainable_variables('network/layer1/conv/bias')[0])
-            # tf.summary.histogram("bias_conv2", tf.trainable_variables('network/layer2/conv/bias')[0])
-            # tf.summary.histogram("bias_conv3", tf.trainable_variables('network/layer3/conv/bias')[0])
-            # tf.summary.histogram("bias_conv4", tf.trainable_variables('network/layer4/conv/bias')[0])
-            # tf.summary.histogram("bias_conv5", tf.trainable_variables('network/layer5/conv/bias')[0])
-            # tf.summary.histogram("bias_conv6", tf.trainable_variables('network/layer6/conv/bias')[0])
             for var in tf.trainable_variables():
                 tf.summary.histogram(var.name, var)
 
@@ -59,14 +45,6 @@ class Baseline(object):
             for grad, var in grads:
                 tf.summary.histogram(var.name + '/gradient', grad)
 
-            # # feature maps
-            # tf.summary.histogram('feature_map1', self.feature_maps['layer1_h'])
-            # tf.summary.histogram('feature_map2', self.feature_maps['layer2_h'])
-            # tf.summary.histogram('feature_map3', self.feature_maps['layer3_h'])
-            # tf.summary.histogram('feature_map4', self.feature_maps['layer4_h'])
-            # tf.summary.histogram('feature_map5', self.feature_maps['layer5_h'])
-            # tf.summary.histogram('feature_map6', self.feature_maps['layer6_h'])
-            
             # because you have several summaries, we should merge them all
             # into one op to make it easier to manage
             self.summary_op = tf.summary.merge_all()
@@ -123,7 +101,7 @@ class Baseline(object):
         saver = tf.train.Saver()
         
         step = 0
-        with tf.Session() as sess:
+        with tf.Session(config=self.sess_config) as sess:
             writer = tf.summary.FileWriter(self.logdir, sess.graph)
             self.logging()
             
@@ -217,24 +195,21 @@ if __name__ == "__main__":
     parser.add_argument('-print_every', default=-1, type=np.int)
     parser.add_argument('-save_every', default=-1, type=np.int)
     parser.add_argument('-datadir', default='cs231n/datasets/cifar-10-batches-py', type=str)
+    parser.add_argument('-train_size', default=100, type=np.int)
+    parser.add_argument('-val_size', default=1000, type=np.int)
+    parser.add_argument('-test_size', default=10000, type=np.int)
     args = parser.parse_args()
 
     # Invoke the above function to get our data.
-    # X_train, y_train, X_val, y_val, X_test, y_test = get_CIFAR10_data()
-    data = get_CIFAR10_data(cifar10_dir=args.datadir)
-    # print('Train data shape: ', data['X_train'].shape)
-    # print('Train labels shape: ', data['y_train'].shape)
-    # print('Validation data shape: ', data['X_val'].shape)
-    # print('Validation labels shape: ', data['y_val'].shape)
-    # print('Test data shape: ', data['X_test'].shape)
-    # print('Test labels shape: ', data['y_test'].shape)
+    num_training = args.train_size
+    num_validation = args.val_size
+    num_test = args.test_size
+    data = get_CIFAR10_data(cifar10_dir=args.datadir, num_training=num_training, num_validation=num_validation, num_test=num_test)
 
+    # Specify the network
     network_name = args.network
     logdir = args.logdir
     savedir = args.savedir
-    # logdir = 'graphs/' + network_name
-    # savedir = 'checkpoints/' + network_name
-    
     my_model = models[network_name](logdir, savedir)
     my_model.setup(data['X_train'], data['y_train'], num_epochs=args.epochs, batch_size=args.batch_size)
     my_model.train(print_every=args.print_every, save_every=args.save_every)
