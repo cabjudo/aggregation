@@ -131,7 +131,7 @@ class Baseline(object):
 class ConvModelMaxNorm(Baseline):
     def tf_max_norm(self, x, kernel_size=2):
         with tf.name_scope("max_norm"):
-            N, _, _, C = x.get_shape().as_list() # (N, C, H, W)
+            N, _, _, C = x.get_shape().as_list() # (N, H, W, C)
             
             ksizes = [1, kernel_size, kernel_size, 1]
             strides = [1, 1, 1, 1]
@@ -159,8 +159,8 @@ class ConvModelMaxNorm(Baseline):
         is_training = True
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
-            nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
-            a = self.tf_max_norm(nh)
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = self.tf_max_norm(h)
 
         var_name = scope + '_h'
         self.feature_maps[var_name] = h
@@ -173,8 +173,22 @@ class ConvModelAbs(Baseline):
         is_training = True
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
-            nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
-            a = tf.abs(nh)
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = tf.abs(h)
+
+        var_name = scope + '_h'
+        self.feature_maps[var_name] = h
+    
+        return a
+
+
+class ConvModelMaxPool(Baseline):
+    def conv_bn_relu_layer(self, input_data, scope, pool_size=2, strides=1):
+        is_training = True
+        with tf.variable_scope(scope):
+            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = tf.layers.max_pooling2d(h, pool_size=pool_size, strides=1, padding='same')
 
         var_name = scope + '_h'
         self.feature_maps[var_name] = h
@@ -182,9 +196,45 @@ class ConvModelAbs(Baseline):
         return a
 
     
-            
+class ConvModelSelection(Baseline):
+    def tf_selection(self, x):
+        N, H, W, C = x.get_shape().as_list() # (N, H, W, C)
+        
+        abs_x = tf.abs(x) # (N, H, W, C)
+        
+        max_ind = tf.cast(tf.argmax(abs_x, dimension=3), tf.int32) # (N, H, W)
+        # print(max_ind.get_shape().as_list())
+        max_ind = tf.reshape(max_ind, [-1, H * W])
+        # print(max_ind.get_shape().as_list())
+        
+        H_ind, W_ind = tf.meshgrid(tf.range(H), tf.range(W), indexing='ij')
+        H_ind, W_ind = tf.reshape(H_ind, [-1]), tf.reshape(W_ind, [-1])
+        
+        out = tf.map_fn( lambda x: tf.gather_nd(x[0], tf.transpose(tf.stack([H_ind, W_ind, x[1]], 0), [1, 0])), (x, max_ind), dtype=tf.float32 )
+        # print(out.get_shape().as_list())
+        out = tf.reshape(out, (-1, H, W, 1))
+        out = x * tf.cast(tf.equal(out, x), tf.float32)
+        
+        return out
+
+    
+    def conv_bn_relu_layer(self, input_data, scope, strides=1):
+        is_training = True
+        with tf.variable_scope(scope):
+            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = self.tf_selection(h)
+
+        var_name = scope + '_h'
+        self.feature_maps[var_name] = h
+    
+        return a
+
+
+
+    
 if __name__ == "__main__":
-    models = {'relu':Baseline, 'max_norm':ConvModelMaxNorm, 'abs':ConvModelAbs}
+    models = { 'relu':Baseline, 'max_norm':ConvModelMaxNorm, 'abs':ConvModelAbs, 'max':ConvModelMaxPool, 'select':ConvModelSelection }
     
     parser = argparse.ArgumentParser(description='Run CNNs with various nonlinearities')
     parser.add_argument('-network', default='relu', choices=models)
@@ -195,7 +245,7 @@ if __name__ == "__main__":
     parser.add_argument('-print_every', default=-1, type=np.int)
     parser.add_argument('-save_every', default=-1, type=np.int)
     parser.add_argument('-datadir', default='cs231n/datasets/cifar-10-batches-py', type=str)
-    parser.add_argument('-train_size', default=100, type=np.int)
+    parser.add_argument('-train_size', default=1000, type=np.int)
     parser.add_argument('-val_size', default=1000, type=np.int)
     parser.add_argument('-test_size', default=10000, type=np.int)
     args = parser.parse_args()
