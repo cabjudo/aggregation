@@ -53,8 +53,8 @@ class Baseline(object):
         is_training = True
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
-            nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
-            a = tf.nn.relu(nh, name='relu')
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = tf.nn.relu(h, name='relu')
 
         var_name = scope + '_h'
         self.feature_maps[var_name] = h
