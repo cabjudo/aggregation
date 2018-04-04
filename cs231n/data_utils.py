@@ -7,6 +7,9 @@ import os
 from scipy.misc import imread
 import platform
 
+import tensorflow as tf
+
+
 def load_pickle(f):
     version = platform.python_version_tuple()
     if version[0] == '2':
@@ -260,5 +263,45 @@ def load_imagenet_val(num=None):
         X = X[:num]
         y = y[:num]
     return X, y, class_names
+
+
+
+
+class Data(object):
+    def __init__(self, datadir, num_training=49000, num_validation=1000, num_test=1000 ):
+        self.datadir = datadir
+        self.num_training = num_training
+        self.num_validation = num_validation
+        self.num_test = num_test
+        
+        self.get_data()
+        self.build_tf_datasets()
+        
+    def get_data(self):
+        pass
+
+    def build_tf_datasets(self):
+        pass
+    
+
+class DataCIFAR10(Data):
+    def get_data(self):
+        self.data = get_CIFAR10_data(cifar10_dir=self.datadir, num_training=self.num_training, num_validation=self.num_validation, num_test=self.num_test)
+        
+    def build_tf_datasets(self):
+        with tf.name_scope('data'):
+            self.train_data = tf.data.Dataset.from_tensor_slices((self.data['X_train'], self.data['y_train']))
+            self.train_data = self.train_data.map(lambda x,y: (tf.cast(x, tf.float32), tf.one_hot(y, 10)))
+            # validation data, size: 1000
+            self.val_data = tf.data.Dataset.from_tensor_slices((self.data['X_val'], self.data['y_val']))
+            self.val_data = self.val_data.batch(self.num_validation)
+            self.val_data = self.val_data.map(lambda x,y: (tf.cast(x, tf.float32), tf.one_hot(y, 10)))
+            # test data, size: 1000
+            self.test_data = tf.data.Dataset.from_tensor_slices((self.data['X_test'], self.data['y_test']))
+            self.test_data = self.test_data.batch(self.num_test)
+            self.test_data = self.test_data.map(lambda x,y: (tf.cast(x, tf.float32), tf.one_hot(y, 10)))
+        
+
+Datasets = { 'CIFAR10':DataCIFAR10 }
 
 
