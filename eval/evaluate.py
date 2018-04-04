@@ -18,12 +18,14 @@ class Evaluator(object):
         self.network = Networks[network_type]
 
         
-    def setup(self, datadir, num_training=49000, num_validation=1000, num_test=1000, batch_size=64):
+    def setup(self, datadir, num_training=49000, num_validation=1000, num_test=1000, batch_size=64, seed=0):
         self.num_training = num_training
         self.num_validation = num_validation
         self.num_test = num_test
         self.datadir = datadir
         self.setup_data(batch_size)
+
+        tf.set_random_seed(seed)
 
         self.setup_network()
 
@@ -68,12 +70,11 @@ class Evaluator(object):
             self.summary_op = tf.summary.merge_all()
 
 
-    def train(self, print_every=-1, save_every=-1, seed=0, num_epochs=1):
+    def train(self, print_every=-1, save_every=-1, num_epochs=1):
         self.num_epochs = num_epochs
         self.print_every = print_every
         self.save_every = save_every
 
-        tf.set_random_seed(seed)
         self.saver = tf.train.Saver()
         self.eval(eval_type='TRAIN')
 
