@@ -30,10 +30,10 @@ class Baseline(object):
         with tf.variable_scope('network'):
             a1 = self.block(tf.reshape(self.img, [-1,32,32,3]), 'layer1')
             a2 = self.block(a1, 'layer2')
-            a3 = self.block(a2, 'layer3', strides=2)
+            a3 = self.block(a2, 'layer3', conv_strides=2)
             a4 = self.block(a3, 'layer4')
             a5 = self.block(a4, 'layer5')
-            a6 = self.block(a5, 'layer6', strides=2)
+            a6 = self.block(a5, 'layer6', conv_strides=2)
 
             with tf.variable_scope('layer7'):
                 h7 = tf.layers.conv2d(a6, filters=10, kernel_size=4, padding='valid', name='conv') # 1x1x10
@@ -82,10 +82,9 @@ class ConvModelMaxNorm(Baseline):
         return out
 
     
-    def block(self, input_data, scope, strides=1):
-        is_training = True
+    def block(self, input_data, scope, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = self.tf_max_norm(h)
 
@@ -96,10 +95,9 @@ class ConvModelMaxNorm(Baseline):
 
     
 class ConvModelAbs(Baseline):
-    def block(self, input_data, scope, strides=1):
-        is_training = True
+    def block(self, input_data, scope, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = tf.abs(h)
 
@@ -110,12 +108,11 @@ class ConvModelAbs(Baseline):
 
 
 class ConvModelMaxPool(Baseline):
-    def block(self, input_data, scope, pool_size=2, strides=1):
-        is_training = True
+    def block(self, input_data, scope, pool_size=2, pool_strides=1, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
-            a = tf.layers.max_pooling2d(h, pool_size=pool_size, strides=1, padding='same')
+            a = tf.layers.max_pooling2d(h, pool_size=pool_size, strides=pool_strides, padding='same')
 
         var_name = scope + '_h'
         self.feature_maps[var_name] = h
@@ -145,10 +142,9 @@ class ConvModelSelection(Baseline):
         return out
 
     
-    def block(self, input_data, scope, strides=1):
-        is_training = True
+    def block(self, input_data, scope, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = self.tf_selection(h)
 
@@ -161,3 +157,34 @@ Networks = { 'relu':Baseline, 'max_norm':ConvModelMaxNorm, 'abs':ConvModelAbs, '
 
 
 
+if __name__ == '__main__':
+    from cs231n.data_utils import Datasets
+
+    datadir = 'cs231n/datasets/cifar-10-batches-py'
+    dataset = Datasets['CIFAR10'](datadir)
+    dataset.train_data = dataset.train_data.batch(64)
+
+    tf.reset_default_graph()
+    iterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
+    img, label = iterator.get_next()
+    relunet = Networks['relu'](img, label)
+
+    tf.reset_default_graph()
+    max_normiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
+    img, label = max_normiterator.get_next()
+    max_normnet = Networks['max_norm'](img, label)
+
+    tf.reset_default_graph()
+    absiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
+    img, label = absiterator.get_next()
+    absnet = Networks['abs'](img, label)
+
+    tf.reset_default_graph()
+    maxiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
+    img, label = maxiterator.get_next()
+    maxnet = Networks['max'](img, label)
+
+    tf.reset_default_graph()
+    selectiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
+    img, label = selectiterator.get_next()
+    selectnet = Networks['select'](img, label)
