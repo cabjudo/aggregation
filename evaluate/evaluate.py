@@ -156,16 +156,17 @@ if __name__ == "__main__":
     parser.add_argument('-savedir', default='checkpoints/')    
     parser.add_argument('-epochs', default=5, type=np.int)
     parser.add_argument('-batch_size', default=64, type=np.int)
-    parser.add_argument('-print_every', default=100, type=np.int)
+    parser.add_argument('-print_every', default=10, type=np.int)
     parser.add_argument('-save_every', default=100, type=np.int)
     parser.add_argument('-datadir', default='cs231n/datasets/cifar-10-batches-py', type=str)
     parser.add_argument('-train_size', default=1000, type=np.int)
-    parser.add_argument('-val_size', default=1000, type=np.int)
-    parser.add_argument('-test_size', default=1000, type=np.int)
+    parser.add_argument('-val_size', default=100, type=np.int)
+    parser.add_argument('-test_size', default=100, type=np.int)
     args = parser.parse_args()
 
     # Invoke the above function to get our data.
-    config = tf.ConfigProto(allow_soft_placement=True)#, log_device_placement=True)
+    # config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=True)
+    config=None
     network_name = args.network
     logdir = args.logdir
     savedir = args.savedir

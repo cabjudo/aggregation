@@ -1,9 +1,19 @@
 import tensorflow as tf
 import numpy as np
 
-
         
 class Baseline(object):
+    '''
+    Baseline for experiments. 
+    7 layer convolutional neural network
+    (conv - relu)*6 - conv - softmax
+    
+    Inputs:
+    - img: Input image of size (N, 32, 32, 3)
+    - label: label associated with each input (N, C)
+    N: dataset size
+    C: number of classes
+    '''
     def __init__(self, img, label):
         self.img = img
         self.label = label
@@ -14,9 +24,9 @@ class Baseline(object):
         self.optimize()
 
 
-    def block(self, input_data, scope, conv_strides=1):
+    def block(self, input_data, scope, filters=16, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = tf.nn.relu(h, name='relu')
 
@@ -28,12 +38,12 @@ class Baseline(object):
             
     def build_network(self):
         with tf.variable_scope('network'):
-            a1 = self.block(tf.reshape(self.img, [-1,32,32,3]), 'layer1')
-            a2 = self.block(a1, 'layer2')
-            a3 = self.block(a2, 'layer3', conv_strides=2)
-            a4 = self.block(a3, 'layer4')
-            a5 = self.block(a4, 'layer5')
-            a6 = self.block(a5, 'layer6', conv_strides=2)
+            a1 = self.block(tf.reshape(self.img, [-1,32,32,3]), 'layer1', filters=32)
+            a2 = self.block(a1, 'layer2', filters=64)
+            a3 = self.block(a2, 'layer3', filters=128, conv_strides=2)
+            a4 = self.block(a3, 'layer4', filters=256)
+            a5 = self.block(a4, 'layer5', filters=512)
+            a6 = self.block(a5, 'layer6', filters=512, conv_strides=2)
 
             with tf.variable_scope('layer7'):
                 h7 = tf.layers.conv2d(a6, filters=10, kernel_size=4, padding='valid', name='conv') # 1x1x10
@@ -53,9 +63,23 @@ class Baseline(object):
             self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
             self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.mean_loss, global_step=self.global_step)
 
+
+###################################### Aggregation ########################################################
             
-            
-class ConvModelMaxNorm(Baseline):
+class ConvModelMaxNormPool(Baseline):
+    '''
+    Max_norm layer is an aggregation layer which returns the 
+    per-channel neighborhood value with the highest norm
+
+    7 layer convolutional neural network
+    (conv - max_norm)*6 - conv - softmax
+
+    Inputs:
+    - img: Input image of size (N, 32, 32, 3)
+    - label: label associated with each input (N, C)
+    N: dataset size
+    C: number of classes
+    '''
     def tf_max_norm(self, x, kernel_size=2):
         with tf.name_scope("max_norm"):
             N, _, _, C = x.get_shape().as_list() # (N, H, W, C)
@@ -82,9 +106,9 @@ class ConvModelMaxNorm(Baseline):
         return out
 
     
-    def block(self, input_data, scope, conv_strides=1):
+    def block(self, input_data, scope, filters=16, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = self.tf_max_norm(h)
 
@@ -94,10 +118,76 @@ class ConvModelMaxNorm(Baseline):
         return a
 
     
-class ConvModelAbs(Baseline):
-    def block(self, input_data, scope, conv_strides=1):
+class ConvModelMaxPool(Baseline):
+    '''
+    Max_pool layer is an aggregation layer which returns the 
+    per-channel neighborhood value with the highest value
+
+    7 layer convolutional neural network
+    (conv - max)*6 - conv - softmax
+
+    Inputs:
+    - img: Input image of size (N, 32, 32, 3)
+    - label: label associated with each input (N, C)
+    N: dataset size
+    C: number of classes
+    '''
+    def block(self, input_data, scope, pool_size=2, pool_strides=1, filters=16, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = tf.layers.max_pooling2d(h, pool_size=pool_size, strides=pool_strides, padding='same')
+
+        var_name = scope + '_h'
+        self.feature_maps[var_name] = h
+    
+        return a
+
+
+class ConvModelAvgPool(Baseline):
+    '''
+    Sum_pool layer is an aggregation layer which returns the sum
+    of per-channel neighborhood values
+
+    7 layer convolutional neural network
+    (conv - max)*6 - conv - softmax
+
+    Inputs:
+    - img: Input image of size (N, 32, 32, 3)
+    - label: label associated with each input (N, C)
+    N: dataset size
+    C: number of classes
+    '''
+    def block(self, input_data, scope, pool_size=2, pool_strides=1, filters=16, conv_strides=1):
+        with tf.variable_scope(scope):
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = tf.nn.pool(h, window_shape=pool_size, pooling_type='AVG', padding='SAME', strides=pool_strides)
+
+        var_name = scope + '_h'
+        self.feature_maps[var_name] = h
+    
+        return a
+    
+
+#################################################### Nonlinearities ##########################################################
+    
+class ConvModelAbs(Baseline):
+    '''
+    Abs layer is a nonlinear activation unit that returns the absolute value (inspired by scattering networks)
+
+    7 layer convolutional neural network
+    (conv - abs)*6 - conv - softmax
+    
+    Inputs:
+    - img: Input image of size (N, 32, 32, 3)
+    - label: label associated with each input (N, C)
+    N: dataset size
+    C: number of classes
+    '''
+    def block(self, input_data, scope, filters=16, conv_strides=1):
+        with tf.variable_scope(scope):
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = tf.abs(h)
 
@@ -107,20 +197,22 @@ class ConvModelAbs(Baseline):
         return a
 
 
-class ConvModelMaxPool(Baseline):
-    def block(self, input_data, scope, pool_size=2, pool_strides=1, conv_strides=1):
-        with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
-            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
-            a = tf.layers.max_pooling2d(h, pool_size=pool_size, strides=pool_strides, padding='same')
-
-        var_name = scope + '_h'
-        self.feature_maps[var_name] = h
-    
-        return a
-
-    
 class ConvModelSelection(Baseline):
+    '''
+    Selection layer is a nonlinear activation unit which returns 
+    a vector of all zeros, except the channel with the highest 
+    response in absolute value. This channel has the same (signed)
+    value as the input
+
+    7 layer convolutional neural network
+    (conv - select)*6 - conv - softmax
+
+    Inputs:
+    - img: Input image of size (N, 32, 32, 3)
+    - label: label associated with each input (N, C)
+    N: dataset size
+    C: number of classes
+    '''
     def tf_selection(self, x):
         N, H, W, C = x.get_shape().as_list() # (N, H, W, C)
         
@@ -142,9 +234,9 @@ class ConvModelSelection(Baseline):
         return out
 
     
-    def block(self, input_data, scope, conv_strides=1):
+    def block(self, input_data, scope, filters=16, conv_strides=1):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=16, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = self.tf_selection(h)
 
@@ -153,8 +245,23 @@ class ConvModelSelection(Baseline):
     
         return a
 
-Networks = { 'relu':Baseline, 'max_norm':ConvModelMaxNorm, 'abs':ConvModelAbs, 'max':ConvModelMaxPool, 'select':ConvModelSelection }
 
+# TODO: ConvModelSelection version using max opposed to max_norm
+
+# TODO: ConvModelSelection version with subsequent aggregation (sum perhaps)
+# TODO: ConvModelAvg this aggregation approach is very close to linear, ConvModelSum would be
+# TODO: ConvModelSum + Relu this approach does some aggregation but still uses the standard nonlinearity
+# TODO: ConvModelSum + Abs
+
+# Aggregation before and after the nonlinearity should be considered
+# Batch normalization should also be considered
+
+Networks = { 'avg':ConvModelAvgPool,
+             'relu':Baseline,
+             'max_norm':ConvModelMaxNormPool,
+             'abs':ConvModelAbs,
+             'max':ConvModelMaxPool,
+             'select':ConvModelSelection }
 
 
 if __name__ == '__main__':

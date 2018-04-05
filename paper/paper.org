@@ -79,6 +79,17 @@ the CNN is allowed to learn. This approach leads to a reduction in the number of
 gives room for the CNN to allocate more learning time to discriminating inter-class similarity
 instead impartiality of inter-class variation (the network doesn't need to learn (equi/in)variance to rotations).
 
+* Experiments
+Experiments are performed by replacing the relu in convolutional architectures which fit the proposed interpretation, for example VGG
+which uses strictly hierarchical processing whereas DenseNet uses skip connections which possibly a different paradigm.
+The difference may be explained by considering that DenseNet aggregates (by convolution) features (or parts) from different 
+levels in the hierarchy which differs from VGG in which each layer is informed about image parts strictly through the immediately preceeding 
+layer.
+
+
+
+
+
 
 bibliographystyle:plain
 bibliography:bib.bib
