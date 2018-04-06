@@ -177,7 +177,7 @@ if __name__ == "__main__":
     parser.add_argument('-train_size', default=1000, type=np.int)
     parser.add_argument('-val_size', default=1000, type=np.int)
     parser.add_argument('-test_size', default=1000, type=np.int)
-    parser.add_argument('-lr', default=1e-3)
+    parser.add_argument('-lr', default=0.01, type=np.float)
     args = parser.parse_args()
 
     # Invoke the above function to get our data.
