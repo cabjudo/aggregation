@@ -79,7 +79,61 @@ the CNN is allowed to learn. This approach leads to a reduction in the number of
 gives room for the CNN to allocate more learning time to discriminating inter-class similarity
 instead impartiality of inter-class variation (the network doesn't need to learn (equi/in)variance to rotations).
 
+
 * Experiments
+
+Considering alternative nonlinearities on the CIFAR10 dataset with smallNet.
+
+|----------------------+--------------------------------|
+| Network              | smallNet                       |
+|----------------------+--------------------------------|
+| Layer1               | 3x3 conv(valid, stride=1) + nl |
+| Indim/Outdim (h,w,c) | 32 x 32 x 3 / 30 x 30 x 16     |
+|----------------------+--------------------------------|
+| Layer2               | 3x3 conv(valid, stride=1) + nl |
+| Indim/Outdim         | 30 x 30 x 16 / 28 x 28 x 16    |
+|----------------------+--------------------------------|
+| Layer3               | 3x3 conv(valid, stride=2) + nl |
+| Indim/Outdim         | 28 x 28 x 16 / 13 x 13 x 16    |
+|----------------------+--------------------------------|
+| Layer4               | 3x3 conv(valid, stride=1) + nl |
+| Indim/Outdim         | 13 x 13 x 16 / 11 x 11 x 16    |
+|----------------------+--------------------------------|
+| Layer5               | 3x3 conv(valid, stride=1) + nl |
+| Indim/Outdim         | 11 x 11 x 16 / 9 x 9 x 16      |
+|----------------------+--------------------------------|
+| Layer6               | 3x3 conv(valid, stride=2) + nl |
+| Indim/Outdim         | 9 x 9 x 16 / 4 x 4 x 16        |
+|----------------------+--------------------------------|
+| Layer7               | 3x3 conv(valid) + nl           |
+| Indim/Outdim         | 4 x 4 x 16 / 1 x 1 x 10        |
+|----------------------+--------------------------------|
+
+
+
+
+
+|-----------------|
+| Method          |
+|-----------------|
+| ReLU            |
+| Select-max      |
+| Select-max-norm |
+| Abs             |
+|-----------------|
+
+
+
+Modified the DenseNet architecture ([[https://github.com/ikhlestov/vision_networks][tensorflow implementation]]) replacing all instances of tf.nn.relu with our 
+max-aggregation component.
+
+|------------------+---------+--------+--------+----------|
+| Method           | Dataset | Params | Epochs | Accuracy |
+|------------------+---------+--------+--------+----------|
+| Densenet-max-agg | CIFAR10 |        |        |    79.03 |
+| Densenet         | CIFAR10 |        |        |          |
+|------------------+---------+--------+--------+----------|
+* Discussion
 Experiments are performed by replacing the relu in convolutional architectures which fit the proposed interpretation, for example VGG
 which uses strictly hierarchical processing whereas DenseNet uses skip connections which possibly a different paradigm.
 The difference may be explained by considering that DenseNet aggregates (by convolution) features (or parts) from different 

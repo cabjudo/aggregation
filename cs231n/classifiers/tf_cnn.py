@@ -1,7 +1,14 @@
 import tensorflow as tf
 import numpy as np
 
-        
+# Architectures
+smallNet = { 'indim': [ 32, 32, 3 ], 
+             'filters': [16, 16, 16, 16, 16, 16, 10],
+             'strides': [1, 1, 2, 1, 1, 2, 1],
+             'padding': ['valid', 'valid', 'valid', 'valid', 'valid', 'valid', 'valid'],
+             'kernel_size' : [ 3, 3, 3, 3, 3, 3, 4 ] }
+
+
 class Baseline(object):
     '''
     Baseline for experiments. 
@@ -14,19 +21,19 @@ class Baseline(object):
     N: dataset size
     C: number of classes
     '''
-    def __init__(self, img, label):
+    def __init__(self, img, label, arch=smallNet):
         self.img = img
         self.label = label
+        self.arch = arch
 
         self.feature_maps = {}
 
         self.build_network()
-        self.optimize()
 
 
-    def block(self, input_data, scope, filters=16, conv_strides=1):
+    def block(self, input_data, scope, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=kernel_size, strides=conv_strides, padding=padding, name='conv')
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = tf.nn.relu(h, name='relu')
 
@@ -37,31 +44,31 @@ class Baseline(object):
 
             
     def build_network(self):
+        num_layers = len(self.arch['filters'])
+        
         with tf.variable_scope('network'):
-            a1 = self.block(tf.reshape(self.img, [-1,32,32,3]), 'layer1', filters=32)
-            a2 = self.block(a1, 'layer2', filters=64)
-            a3 = self.block(a2, 'layer3', filters=128, conv_strides=2)
-            a4 = self.block(a3, 'layer4', filters=256)
-            a5 = self.block(a4, 'layer5', filters=512)
-            a6 = self.block(a5, 'layer6', filters=512, conv_strides=2)
+            input_data = tf.reshape(self.img, [-1] + self.arch['indim'] )
+            for l in range(num_layers - 1):
+                layer_name = 'layer' + str(l + 1)
+                filters = self.arch['filters'][l]
+                kernel_size = self.arch['kernel_size'][l]
+                conv_strides= self.arch['strides'][l]
+                padding = self.arch['padding'][l]
 
-            with tf.variable_scope('layer7'):
-                h7 = tf.layers.conv2d(a6, filters=10, kernel_size=4, padding='valid', name='conv') # 1x1x10
+                input_data = self.block(input_data, layer_name, filters=filters, conv_strides=conv_strides, kernel_size=kernel_size, padding=padding)
 
-            self.logits = tf.reshape(h7,[-1,10])
+            # classification layer
+            l = num_layers - 1
+            layer_name = 'layer' + str(l + 1)
+            filters = self.arch['filters'][l]
+            kernel_size = self.arch['kernel_size'][l]
+            conv_strides= self.arch['strides'][l]
+            padding = self.arch['padding'][l]
+                
+            with tf.variable_scope(layer_name):
+                out = tf.layers.conv2d(input_data, filters=filters, kernel_size=kernel_size, padding=padding, name='conv')
 
-            
-    def optimize(self, learning_rate=1e-3):
-        with tf.name_scope('optimize'):
-            with tf.name_scope('loss'):
-                total_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.label, logits=self.logits)
-                self.mean_loss = tf.reduce_mean(total_loss)
-
-            with tf.name_scope('accuracy'):
-                self.accuracy = tf.reduce_mean( tf.cast(tf.equal(tf.argmax(self.label, 1), tf.argmax(self.logits,1)), tf.float32) )
-
-            self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.mean_loss, global_step=self.global_step)
+            self.logits = tf.reshape(out,[-1,10])
 
 
 ###################################### Aggregation ########################################################
@@ -106,7 +113,7 @@ class ConvModelMaxNormPool(Baseline):
         return out
 
     
-    def block(self, input_data, scope, filters=16, conv_strides=1):
+    def block(self, input_data, scope, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
@@ -132,7 +139,7 @@ class ConvModelMaxPool(Baseline):
     N: dataset size
     C: number of classes
     '''
-    def block(self, input_data, scope, pool_size=2, pool_strides=1, filters=16, conv_strides=1):
+    def block(self, input_data, scope, pool_size=2, pool_strides=1, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
@@ -158,11 +165,11 @@ class ConvModelAvgPool(Baseline):
     N: dataset size
     C: number of classes
     '''
-    def block(self, input_data, scope, pool_size=2, pool_strides=1, filters=16, conv_strides=1):
+    def block(self, input_data, scope, pool_size=2, pool_strides=1, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
-            a = tf.nn.pool(h, window_shape=pool_size, pooling_type='AVG', padding='SAME', strides=pool_strides)
+            a = tf.layers.average_pooling2d(h, pool_size=pool_size, strides=pool_strides, padding='same')
 
         var_name = scope + '_h'
         self.feature_maps[var_name] = h
@@ -185,7 +192,7 @@ class ConvModelAbs(Baseline):
     N: dataset size
     C: number of classes
     '''
-    def block(self, input_data, scope, filters=16, conv_strides=1):
+    def block(self, input_data, scope, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
@@ -234,7 +241,7 @@ class ConvModelSelection(Baseline):
         return out
 
     
-    def block(self, input_data, scope, filters=16, conv_strides=1):
+    def block(self, input_data, scope, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
@@ -245,11 +252,60 @@ class ConvModelSelection(Baseline):
     
         return a
 
+    
+class ConvModelSelectMax(Baseline):
+    '''
+    Select_max layer is a nonlinear activation unit which returns 
+    a vector of all zeros, except the channel with the highest 
+    response. This channel has the same (signed)
+    value as the input
 
-# TODO: ConvModelSelection version using max opposed to max_norm
+    7 layer convolutional neural network
+    (conv - select)*6 - conv - softmax
 
+    Inputs:
+    - img: Input image of size (N, 32, 32, 3)
+    - label: label associated with each input (N, C)
+    N: dataset size
+    C: number of classes
+    '''
+    def tf_select_max(self, x):
+        '''
+        Selection layer (tensorflow implementation) is a nonlinear unit which takes a feature vector and returns the 
+        a feature vector of all zeros except the index that had the maximum response
+        '''
+        N, H, W, C = x.get_shape().as_list() # (N, H, W, C)
+        
+        max_ind = tf.cast(tf.argmax(x, dimension=3), tf.int32) # (N, H, W)
+        # print(max_ind.get_shape().as_list())
+        max_ind = tf.reshape(max_ind, [-1, H * W])
+        # print(max_ind.get_shape().as_list())
+        
+        H_ind, W_ind = tf.meshgrid(tf.range(H), tf.range(W), indexing='ij')
+        H_ind, W_ind = tf.reshape(H_ind, [-1]), tf.reshape(W_ind, [-1])
+        
+        out = tf.map_fn( lambda x: tf.gather_nd(x[0], tf.transpose(tf.stack([H_ind, W_ind, x[1]], 0), [1, 0])), (x, max_ind), dtype=tf.float32 )
+        # print(out.get_shape().as_list())
+        out = tf.reshape(out, (-1, H, W, 1))
+        out = x * tf.cast(tf.equal(out, x), tf.float32)
+        out = tf.transpose(out, [0, 3, 1, 2])
+        
+        return out
+
+    
+    def block(self, input_data, scope, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
+        with tf.variable_scope(scope):
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
+            a = self.tf_select_max(h)
+
+        var_name = scope + '_h'
+        self.feature_maps[var_name] = h
+    
+        return a
+
+    
 # TODO: ConvModelSelection version with subsequent aggregation (sum perhaps)
-# TODO: ConvModelAvg this aggregation approach is very close to linear, ConvModelSum would be
 # TODO: ConvModelSum + Relu this approach does some aggregation but still uses the standard nonlinearity
 # TODO: ConvModelSum + Abs
 
@@ -261,7 +317,8 @@ Networks = { 'avg':ConvModelAvgPool,
              'max_norm':ConvModelMaxNormPool,
              'abs':ConvModelAbs,
              'max':ConvModelMaxPool,
-             'select':ConvModelSelection }
+             'select':ConvModelSelection,
+             'select_max':ConvModelSelectMax }
 
 
 if __name__ == '__main__':
@@ -271,27 +328,9 @@ if __name__ == '__main__':
     dataset = Datasets['CIFAR10'](datadir)
     dataset.train_data = dataset.train_data.batch(64)
 
-    tf.reset_default_graph()
-    iterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
-    img, label = iterator.get_next()
-    relunet = Networks['relu'](img, label)
-
-    tf.reset_default_graph()
-    max_normiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
-    img, label = max_normiterator.get_next()
-    max_normnet = Networks['max_norm'](img, label)
-
-    tf.reset_default_graph()
-    absiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
-    img, label = absiterator.get_next()
-    absnet = Networks['abs'](img, label)
-
-    tf.reset_default_graph()
-    maxiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
-    img, label = maxiterator.get_next()
-    maxnet = Networks['max'](img, label)
-
-    tf.reset_default_graph()
-    selectiterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
-    img, label = selectiterator.get_next()
-    selectnet = Networks['select'](img, label)
+    for key,value in Networks.iteritems():
+        tf.reset_default_graph()
+        iterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
+        img, label = iterator.get_next()
+        relunet = Networks[key](img, label)
+        print(key + ' completed')

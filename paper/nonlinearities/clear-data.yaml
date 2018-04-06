@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: clear-data
+spec:
+  template:
+    metadata:
+      labels:
+        app: clear-data
+    spec:
+      restartPolicy: Never
+      volumes:
+      - hostPath:
+          path: /usr/lib/nvidia-384/bin
+        name: bin
+      - hostPath:
+          path: /usr/lib/nvidia-384
+        name: lib
+      - name: libcuda-so
+        hostPath:
+          path: /usr/lib/x86_64-linux-gnu/libcuda.so
+      - name: libcuda-so-1
+        hostPath:
+          path: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+      - name: libcuda-so-384-82
+        hostPath:
+          path: /usr/lib/x86_64-linux-gnu/libcuda.so.384.80
+      - name: home
+        persistentVolumeClaim:
+          claimName: home
+      containers:
+      - name: clear-checkpoint
+        image: chaneyk/tensorflow-cuda9:latest-gpu-py3
+        workingDir: /NAS/home/
+        command: ["/bin/sh", "-c"]
+        args: ["rm -rfd graphs/*; rm -rfd checkpoints/*"]
+        resources:
+          limits:
+            alpha.kubernetes.io/nvidia-gpu: 1
+        volumeMounts:
+        - mountPath: /usr/local/nvidia/bin
+          name: bin
+        - mountPath: /usr/local/nvidia/lib
+          name: lib
+        - name: libcuda-so
+          mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so
+        - name: libcuda-so-1
+          mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+        - name: libcuda-so-384-82
+          mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.384.90
+        - name: home
+          mountPath: /NAS/home

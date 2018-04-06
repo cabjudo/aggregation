@@ -1,0 +1,198 @@
+apiVersion: batch/v1
+kind: JobList
+items:
+  - kind: Job
+    metadata:
+       name: abs-lr-01
+    apiVersion: batch/v1
+    spec:
+      template:
+        metadata:
+          labels:
+            app: abs-lr-01
+        spec:
+          restartPolicy: Never
+          volumes:
+          - hostPath:
+              path: /usr/lib/nvidia-384/bin
+            name: bin
+          - hostPath:
+              path: /usr/lib/nvidia-384
+            name: lib
+          - name: libcuda-so
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so
+          - name: libcuda-so-1
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+          - name: libcuda-so-384-82
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so.384.80
+          - name: private-git-repo
+            gitRepo:
+              repository: https://github.com/cabjudo/aggregation
+              directory: aggregation
+          - name: home
+            persistentVolumeClaim:
+              claimName: home
+          - name: data
+            persistentVolumeClaim:
+              claimName: datasets
+          containers:
+          - name: abs
+            image: chaneyk/tensorflow-cuda9:latest-gpu-py3
+            env:
+            - name: PYTHONPATH
+              value: "/code/aggregation/"
+            workingDir: /code/aggregation/
+            command: ["python3", "evaluate/evaluate.py", "-network", "abs", "-datadir", "/NAS/data/christine/cifar-10-batches-py", "-savedir", "/NAS/home/checkpoints/abs-01/", "-logdir", "/NAS/home/graphs/abs-01/", "-lr", "0.1"]
+            resources:
+              limits:
+                alpha.kubernetes.io/nvidia-gpu: 1
+            volumeMounts:
+            - mountPath: /usr/local/nvidia/bin
+              name: bin
+            - mountPath: /usr/local/nvidia/lib
+              name: lib
+            - name: libcuda-so
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so
+            - name: libcuda-so-1
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+            - name: libcuda-so-384-82
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.384.90
+            - name: private-git-repo
+              mountPath: /code/
+            - name: data
+              mountPath: /NAS/data
+            - name: home
+              mountPath: /NAS/home
+  - kind: Job
+    metadata:
+       name: abs-lr-001
+    apiVersion: batch/v1
+    spec:
+      template:
+        metadata:
+          labels:
+            app: aggregation
+        spec:
+          restartPolicy: Never
+          volumes:
+          - hostPath:
+              path: /usr/lib/nvidia-384/bin
+            name: bin
+          - hostPath:
+              path: /usr/lib/nvidia-384
+            name: lib
+          - name: libcuda-so
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so
+          - name: libcuda-so-1
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+          - name: libcuda-so-384-82
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so.384.80
+          - name: private-git-repo
+            gitRepo:
+              repository: https://github.com/cabjudo/aggregation
+              directory: aggregation
+          - name: home
+            persistentVolumeClaim:
+              claimName: home
+          - name: data
+            persistentVolumeClaim:
+              claimName: datasets
+          containers:
+          - name: abs
+            image: chaneyk/tensorflow-cuda9:latest-gpu-py3
+            env:
+            - name: PYTHONPATH
+              value: "/code/aggregation/"
+            workingDir: /code/aggregation/
+            command: ["python3", "evaluate/evaluate.py", "-network", "abs", "-datadir", "/NAS/data/christine/cifar-10-batches-py", "-savedir", "/NAS/home/checkpoints/abs-001/", "-logdir", "/NAS/home/graphs/abs-001", "-lr", "0.01"]
+            resources:
+              limits:
+                alpha.kubernetes.io/nvidia-gpu: 1
+            volumeMounts:
+            - mountPath: /usr/local/nvidia/bin
+              name: bin
+            - mountPath: /usr/local/nvidia/lib
+              name: lib
+            - name: libcuda-so
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so
+            - name: libcuda-so-1
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+            - name: libcuda-so-384-82
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.384.90
+            - name: private-git-repo
+              mountPath: /code/
+            - name: data
+              mountPath: /NAS/data
+            - name: home
+              mountPath: /NAS/home
+  - kind: Job
+    metadata:
+       name: abs-lr-0001
+    apiVersion: batch/v1
+    spec:
+      template:
+        metadata:
+          labels:
+            app: abs-lr-0001
+        spec:
+          restartPolicy: Never
+          volumes:
+          - hostPath:
+              path: /usr/lib/nvidia-384/bin
+            name: bin
+          - hostPath:
+              path: /usr/lib/nvidia-384
+            name: lib
+          - name: libcuda-so
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so
+          - name: libcuda-so-1
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+          - name: libcuda-so-384-82
+            hostPath:
+              path: /usr/lib/x86_64-linux-gnu/libcuda.so.384.80
+          - name: private-git-repo
+            gitRepo:
+              repository: https://github.com/cabjudo/aggregation
+              directory: aggregation
+          - name: home
+            persistentVolumeClaim:
+              claimName: home
+          - name: data
+            persistentVolumeClaim:
+              claimName: datasets
+          containers:
+          - name: abs
+            image: chaneyk/tensorflow-cuda9:latest-gpu-py3
+            env:
+            - name: PYTHONPATH
+              value: "/code/aggregation/"
+            workingDir: /code/aggregation/
+            command: ["python3", "evaluate/evaluate.py", "-network", "abs", "-datadir", "/NAS/data/christine/cifar-10-batches-py", "-savedir", "/NAS/home/checkpoints/abs-0001/", "-logdir", "/NAS/home/graphs/abs-0001", "-lr", "0.001"]
+            resources:
+              limits:
+                alpha.kubernetes.io/nvidia-gpu: 1
+            volumeMounts:
+            - mountPath: /usr/local/nvidia/bin
+              name: bin
+            - mountPath: /usr/local/nvidia/lib
+              name: lib
+            - name: libcuda-so
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so
+            - name: libcuda-so-1
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.1
+            - name: libcuda-so-384-82
+              mountPath: /usr/lib/x86_64-linux-gnu/libcuda.so.384.90
+            - name: private-git-repo
+              mountPath: /code/
+            - name: data
+              mountPath: /NAS/data
+            - name: home
+              mountPath: /NAS/home

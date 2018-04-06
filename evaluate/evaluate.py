@@ -18,7 +18,7 @@ class Evaluator(object):
         self.network = Networks[network_type]
 
         
-    def setup(self, datadir, num_training=49000, num_validation=1000, num_test=1000, batch_size=64, seed=0):
+    def setup(self, datadir, num_training=49000, num_validation=1000, num_test=1000, batch_size=64, learning_rate=1e-3, seed=0):
         self.num_training = num_training
         self.num_validation = num_validation
         self.num_test = num_test
@@ -27,6 +27,7 @@ class Evaluator(object):
 
         tf.set_random_seed(seed)
 
+        self.learning_rate = learning_rate
         self.setup_network()
 
         self.setup_logging()
@@ -47,20 +48,34 @@ class Evaluator(object):
         
     def setup_network(self):
         self.network = self.network(self.img, self.label)
+        self.optimize()
 
-        
+
+    def optimize(self):
+        with tf.name_scope('optimize'):
+            with tf.name_scope('loss'):
+                total_loss = tf.nn.softmax_cross_entropy_with_logits_v2(labels=self.label, logits=self.network.logits)
+                self.mean_loss = tf.reduce_mean(total_loss)
+
+            with tf.name_scope('accuracy'):
+                self.accuracy = tf.reduce_mean( tf.cast(tf.equal(tf.argmax(self.label, 1), tf.argmax(self.network.logits,1)), tf.float32) )
+
+            self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.mean_loss, global_step=self.global_step)
+
+            
     def setup_logging(self):
         with tf.name_scope('log'):
             # loss
-            self.loss_summary = tf.summary.scalar("loss", self.network.mean_loss)
+            self.loss_summary = tf.summary.scalar("loss", self.mean_loss)
             # accuracy
-            self.accuracy_summary = tf.summary.scalar("accuracy", self.network.accuracy)
+            self.accuracy_summary = tf.summary.scalar("accuracy", self.accuracy)
 
             for var in tf.trainable_variables():
                 tf.summary.histogram(var.name, var)
 
             # Summarize all gradients
-            grads = tf.gradients(self.network.mean_loss, tf.trainable_variables())
+            grads = tf.gradients(self.mean_loss, tf.trainable_variables())
             grads = list(zip(grads, tf.trainable_variables()))
             for grad, var in grads:
                 tf.summary.histogram(var.name + '/gradient', grad)
@@ -110,12 +125,12 @@ class Evaluator(object):
         sess.run(self.train_init)
         try:
             while True:
-                _, a, l, summary = sess.run([self.network.optimizer, self.network.accuracy, self.network.mean_loss, self.summary_op])
+                _, a, l, summary = sess.run([self.optimizer, self.accuracy, self.mean_loss, self.summary_op])
                 writer.add_summary(summary, global_step=step)
                 if (step % self.print_every) == 0:
                     print('accuracy: ', a, 'loss: ', l, 'step: ', step)
                 if (step % self.save_every) == 0:
-                    self.saver.save(sess, self.savedir, global_step=self.network.global_step)
+                    self.saver.save(sess, self.savedir, global_step=self.global_step)
                 step += 1
                         
         except tf.errors.OutOfRangeError:
@@ -128,7 +143,7 @@ class Evaluator(object):
         sess.run(self.val_init)
         try:
             while True:
-                a, loss_summary, accuracy_summary = sess.run([self.network.accuracy, self.loss_summary, self.accuracy_summary])
+                a, loss_summary, accuracy_summary = sess.run([self.accuracy, self.loss_summary, self.accuracy_summary])
                 writer.add_summary(accuracy_summary, global_step=step)
                 writer.add_summary(loss_summary, global_step=step)
                 print('validation accuracy: ', a)
@@ -141,7 +156,7 @@ class Evaluator(object):
         sess.run(self.test_init)
         try:
             while True:
-                a = sess.run([self.network.accuracy])
+                a = sess.run([self.accuracy])
                 print('test accuracy: ', a)
                 
         except tf.errors.OutOfRangeError:
@@ -151,17 +166,18 @@ class Evaluator(object):
             
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Run CNNs with various nonlinearities')
-    parser.add_argument('-network', default='relu', choices=Networks)
+    parser.add_argument('-network', default='abs', choices=Networks)
     parser.add_argument('-logdir', default='graphs/')
     parser.add_argument('-savedir', default='checkpoints/')    
     parser.add_argument('-epochs', default=5, type=np.int)
     parser.add_argument('-batch_size', default=64, type=np.int)
-    parser.add_argument('-print_every', default=10, type=np.int)
+    parser.add_argument('-print_every', default=100, type=np.int)
     parser.add_argument('-save_every', default=100, type=np.int)
     parser.add_argument('-datadir', default='cs231n/datasets/cifar-10-batches-py', type=str)
     parser.add_argument('-train_size', default=1000, type=np.int)
-    parser.add_argument('-val_size', default=100, type=np.int)
-    parser.add_argument('-test_size', default=100, type=np.int)
+    parser.add_argument('-val_size', default=1000, type=np.int)
+    parser.add_argument('-test_size', default=1000, type=np.int)
+    parser.add_argument('-lr', default=1e-3)
     args = parser.parse_args()
 
     # Invoke the above function to get our data.
@@ -177,7 +193,8 @@ if __name__ == "__main__":
     num_validation = args.val_size
     num_test = args.test_size
     batch_size = args.batch_size
-    evaluator.setup(datadir, num_training, num_validation, num_test, batch_size)
+    learning_rate = args.lr
+    evaluator.setup(datadir, num_training, num_validation, num_test, batch_size, learning_rate)
 
     num_epochs = args.epochs
     evaluator.train(print_every=args.print_every, save_every=args.save_every, num_epochs=num_epochs)

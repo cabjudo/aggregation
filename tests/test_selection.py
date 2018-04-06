@@ -6,6 +6,7 @@ import tensorflow as tf
 
 from selection_layer.selection import selection
 from selection_layer.selection import tf_selection
+from selection_layer.selection import tf_select_max
 from cs231n.gradient_check import eval_numerical_gradient_array, eval_numerical_gradient
 
 
@@ -41,7 +42,7 @@ from cs231n.gradient_check import eval_numerical_gradient_array, eval_numerical_
 #          [ 0.37789474,  0.38526316,  0.39263158,  0.4       ]]]])
 
 
-def test_tf_max_norm():
+def test_tf_selection():
     x_shape = (2, 3, 4, 4)
     x_size = np.prod(x_shape)
     x = tf.reshape( tf.linspace(-0.3, 0.4, x_size), x_shape )
@@ -124,3 +125,49 @@ def test_selection():
     
     print(out,correct_out)
     assert np.allclose(out, correct_out)
+
+
+    
+def test_tf_select_max():
+    x_shape = (2, 3, 4, 4)
+    x_size = np.prod(x_shape)
+    x = tf.reshape( tf.linspace(-0.3, 0.4, x_size), x_shape )
+    out = tf_select_max(x)
+    
+    correct_out = tf.constant([[[[0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ]],
+                                
+                                [[0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ]],
+                                
+                                [[-0.06421053, -0.05684211, -0.04947368, -0.04210526],
+                                 [-0.03473684, -0.02736842, -0.02      , -0.01263158],
+                                 [-0.00526316,  0.00210526,  0.00947368,  0.01684211],
+                                 [ 0.02421053,  0.03157895,  0.03894737,  0.04631579]]],
+                               
+                               
+                               [[[0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ]],
+                                
+                                [[0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ],
+                                 [0          ,  0         ,  0         ,  0         ]],
+                                
+                                [[ 0.28947368,  0.29684211,  0.30421053,  0.31157895],
+                                 [ 0.31894737,  0.32631579,  0.33368421,  0.34105263],
+                                 [ 0.34842105,  0.35578947,  0.36315789,  0.37052632],
+                                 [ 0.37789474,  0.38526316,  0.39263158,  0.4       ]]]])
+    
+    
+    with tf.Session() as sess:
+        c, selection_out = sess.run([correct_out, out])
+        print(c, selection_out)
+
+    assert np.allclose(c, selection_out)
