@@ -285,17 +285,16 @@ class ConvModelSelectMax(Baseline):
         H_ind, W_ind = tf.reshape(H_ind, [-1]), tf.reshape(W_ind, [-1])
         
         out = tf.map_fn( lambda x: tf.gather_nd(x[0], tf.transpose(tf.stack([H_ind, W_ind, x[1]], 0), [1, 0])), (x, max_ind), dtype=tf.float32 )
-        # print(out.get_shape().as_list())
         out = tf.reshape(out, (-1, H, W, 1))
         out = x * tf.cast(tf.equal(out, x), tf.float32)
-        out = tf.transpose(out, [0, 3, 1, 2])
         
         return out
 
     
     def block(self, input_data, scope, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
-            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv') # 30x30x64
+            h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv')
+            print(h.get_shape().as_list())
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = self.tf_select_max(h)
 
