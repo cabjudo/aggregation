@@ -3,7 +3,7 @@
 # kubectl create -f clear-data.yaml
 
 # 'select_max', 'abs', 'relu', 'select'
-kubectl create -f select-max-lr.yaml
-kubectl create -f abs-lr.yaml
-kubectl create -f relu-lr.yaml
-kubectl create -f select-lr.yaml
+kubectl create -f /home/christine/projects/convnet/paper/nonlinearities/select-max-lr.yaml
+kubectl create -f /home/christine/projects/convnet/paper/nonlinearities/abs-lr.yaml
+kubectl create -f /home/christine/projects/convnet/paper/nonlinearities/relu-lr.yaml
+kubectl create -f /home/christine/projects/convnet/paper/nonlinearities/select-lr.yaml

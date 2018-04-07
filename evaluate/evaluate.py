@@ -174,7 +174,7 @@ if __name__ == "__main__":
     parser.add_argument('-print_every', default=100, type=np.int)
     parser.add_argument('-save_every', default=10, type=np.int)
     parser.add_argument('-datadir', default='cs231n/datasets/cifar-10-batches-py', type=str)
-    parser.add_argument('-train_size', default=1000, type=np.int)
+    parser.add_argument('-train_size', default=49000, type=np.int)
     parser.add_argument('-val_size', default=1000, type=np.int)
     parser.add_argument('-test_size', default=1000, type=np.int)
     parser.add_argument('-lr', default=0.01, type=np.float)

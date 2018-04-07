@@ -110,7 +110,7 @@ Considering alternative nonlinearities on the CIFAR10 dataset with smallNet.
 |----------------------+--------------------------------|
 
 
-
+[[~/projects/convnet/paper/nonlinearities_lr1e-3_smallNet.sh][select smallNet]]
 
 
 |-----------------|
