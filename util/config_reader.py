@@ -1,8 +1,32 @@
 import configparser
+import argparse
+
+config = configparser.ConfigParser()
+config.read_dict({'dataset_options': {'datadir': 'cs231n/datasets/cifar-10-batches-py',
+                                      'data_type': 'CIFAR10'},
+                  'dataset_params': {'train_size': 49000,
+                                     'test_size': 1000,
+                                     'val_size': 1000},
+                  'model_options': {'network': 'relu'},
+                  'model_params': {'indim': '32, 32, 3',
+                                   'strides': '1, 1, 2, 1, 1, 2, 1',
+                                   'padding': 'valid, valid, valid, valid, valid, valid, valid',
+                                   'kernel_size': '3, 3, 3, 3, 3, 3, 4',
+                                   'filters': '16, 16, 16, 16, 16, 16, 10'},
+                  'logging_options': {'state_freq': 1,
+                                      'metric_freq': 5},
+                  'logging_params': {'savedir': 'checkpoints/',
+                                     'logdir': 'graphs/'},
+                  'training_options': {'lr': 0.01,
+                                       'batch_size': 64,
+                                       'num_epochs': 5},
+                  'training_params': {'allow_soft_placement': True,
+                                      'print_freq': 100,
+                                      'log_device_placement': True}})
+
 
 
 def get_dataset_options(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
     
     dataset_options = dict(config.items('dataset_options'))
@@ -11,7 +35,6 @@ def get_dataset_options(configfile):
 
 
 def get_dataset_params(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
     
     dataset_params = dict(config.items('dataset_params'))
@@ -23,7 +46,6 @@ def get_dataset_params(configfile):
 
 
 def get_model_options(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
     
     model_options = dict(config.items('model_options'))
@@ -32,7 +54,6 @@ def get_model_options(configfile):
 
 
 def get_model_params(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
     
     model_params = dict(config.items('model_params'))
@@ -42,13 +63,12 @@ def get_model_params(configfile):
             model_params[k] = model_params[k].split(', ')
             continue
 
-        model_params[k] = map(int, model_params[k].split(','))
+        model_params[k] = list(map(int, model_params[k].split(', ')))
 
     return model_params
 
     
 def get_logging_options(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
 
     logging_options = dict(config.items('logging_options'))
@@ -60,7 +80,6 @@ def get_logging_options(configfile):
     
 
 def get_logging_params(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
 
     logging_params = dict(config.items('logging_params'))
@@ -69,7 +88,6 @@ def get_logging_params(configfile):
 
 
 def get_training_options(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
 
     training_options = dict(config.items('training_options'))
@@ -85,7 +103,6 @@ def get_training_options(configfile):
 
 
 def get_training_params(configfile):
-    config = configparser.ConfigParser()
     config.read(configfile)
 
     training_params = dict(config.items('training_params'))
@@ -102,7 +119,11 @@ def get_training_params(configfile):
 
 
 if __name__ == '__main__':
-    configfile = '../config/default.ini'
+    parser = argparse.ArgumentParser(description='parse config file')
+    parser.add_argument('-configfile', default='../config/default.ini')
+    args = parser.parse_args()
+
+    configfile = args.configfile
     # dataset
     dataset_options = get_dataset_options(configfile)
     dataset_params = get_dataset_params(configfile)
@@ -122,22 +143,3 @@ if __name__ == '__main__':
     training_options = get_training_options(configfile)
     training_params = get_training_params(configfile)
     print('training', training_options, training_params)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
