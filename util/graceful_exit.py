@@ -1,8 +1,10 @@
 import signal
 import time
 
+
 class GracefulExitException(Exception):
     pass
+
 
 class GracefulExit:
     def __init__(self, duration, trainer):
