@@ -1,12 +1,13 @@
 import signal
 import time
 
-class MyException(Exception):
+class GracefulExitException(Exception):
     pass
 
 class GracefulExit:
-    def __init__(self, duration):
+    def __init__(self, duration, trainer):
         self.duration = duration
+        self.trainer = trainer
 
     def __enter__(self):
         signal.signal(signal.SIGALRM, self.alarm_handler)
@@ -14,6 +15,8 @@ class GracefulExit:
         
         self.start_time = time.time()
         signal.alarm(self.duration)
+
+        return self
     
     def __exit__(self, exc_type, exc_value, traceback):
         # stop alarm
@@ -21,9 +24,17 @@ class GracefulExit:
         print('leaving context...')
         self.print_duration_info()
         # to suppress exception
-        if exc_type == MyException:
-            print('MyException supressed by context manager')
+        if exc_type == GracefulExitException:
+            print('GracefulExit starting clean_up()')
+            self.clean_up()
+            print('GracefulExitException supressed by context manager')
             return True
+
+    def train(self, *args, **kwargs):
+        self.trainer.train(*args, **kwargs)
+
+    def clean_up(self, *args, **kwargs):
+        self.trainer.clean_up(*args, **kwargs)
 
     def alarm_handler(self, signum, stack):
         '''
@@ -31,7 +42,7 @@ class GracefulExit:
         '''
         print('ALRM recieved')
         self.print_duration_info()
-        raise MyException
+        raise GracefulExitException
 
     def term_handler(self, signum, stack):
         '''
@@ -42,7 +53,7 @@ class GracefulExit:
         signal.alarm(0)
         print('TERM recieved')
         self.print_duration_info()
-        raise MyException
+        raise GracefulExitException
 
     def print_duration_info(self):
         self.end_time = time.time()
@@ -52,20 +63,27 @@ class GracefulExit:
         
 
 if __name__ == '__main__':
-    some_amt_of_time = 60*2
-    another_amt_of_time = 60*5
-    
-    with GracefulExit(some_amt_of_time):
-        try:
-            # sleep for 10 seconds
-            time.sleep(another_amt_of_time)
-        except MyException:
-            print('caught MyException')
+    some_amt_of_time = 2
+    another_amt_of_time = 5
+
+    class DummyTrainer(object):
+        def __init__(self, amt_of_time):
+            self.amt_of_time = amt_of_time
+
+        def train(self):
+            time.sleep(self.amt_of_time)
+
+        def clean_up(self):
             print('saving...')
             time.sleep(10)
-        finally:
-            print('wrap up...')
-            time.sleep(5)
+            
+
+
+    dt = DummyTrainer(another_amt_of_time)
+
+    with GracefulExit(some_amt_of_time, dt) as ge:
+        print(ge)
+        ge.train()
 
 
 
