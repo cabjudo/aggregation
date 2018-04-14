@@ -4,39 +4,39 @@ import argparse
 import numpy as np
 import tensorflow as tf
 
-from cs231n.data_utils import Datasets
-from cs231n.classifiers.tf_cnn import Networks
+from convnet.cs231n.data_utils import Datasets
+from convnet.cs231n.classifiers.tf_cnn import Networks
+
+from convnet.util.config_reader import get_training
+from convnet.util.config_reader import get_logging
+from convnet.util.config_reader import get_model
+from convnet.util.config_reader import get_dataset
 
 
 class Evaluator(object):
-    def __init__(self, network_type='max', data_type='CIFAR10', logdir=None, savedir=None, config=None):
-        self.logdir = logdir
-        self.savedir = savedir
-        self.config = config
+    def __init__(self, configfile):
+        self.model_info = get_model(configfile)
+        self.dataset_info = get_dataset(configfile)
+        self.training_info = get_training(configfile)
+        self.logging_info = get_logging(configfile)
 
-        self.dataset = Datasets[data_type]
-        self.network = Networks[network_type]
+        self.logdir = self.logging_info['params']['logdir']
+        self.savedir = self.logging_info['params']['savedir']
 
         
-    def setup(self, datadir, num_training=49000, num_validation=1000, num_test=1000, batch_size=64, learning_rate=1e-3, seed=0):
-        self.num_training = num_training
-        self.num_validation = num_validation
-        self.num_test = num_test
-        self.datadir = datadir
-        self.setup_data(batch_size)
-
+    def setup(self, seed=0):
         tf.set_random_seed(seed)
 
-        self.learning_rate = learning_rate
+        self.setup_data()
         self.setup_network()
-
         self.setup_logging()
 
 
-    def setup_data(self, batch_size):
+    def setup_data(self):
         with tf.name_scope('data'):
-            self.dataset = self.dataset(self.datadir, num_training=self.num_training, num_validation=self.num_validation, num_test=self.num_test)
-            self.dataset.train_data = self.dataset.train_data.batch(batch_size)
+            self.dataset = Datasets[self.dataset_info['options']['data_type']](self.dataset_info)
+            
+            self.dataset.train_data = self.dataset.train_data.batch(self.training_info['options']['batch_size'])
             
             self.iterator = tf.data.Iterator.from_structure(self.dataset.train_data.output_types, self.dataset.train_data.output_shapes)
             self.img, self.label = self.iterator.get_next()
@@ -47,7 +47,7 @@ class Evaluator(object):
 
         
     def setup_network(self):
-        self.network = self.network(self.img, self.label)
+        self.network = Networks[self.model_info['options']['network']](self.img, self.label, self.model_info['params'])
         self.optimize()
 
 
@@ -61,7 +61,7 @@ class Evaluator(object):
                 self.accuracy = tf.reduce_mean( tf.cast(tf.equal(tf.argmax(self.label, 1), tf.argmax(self.network.logits,1)), tf.float32) )
 
             self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False, name='global_step')
-            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate).minimize(self.mean_loss, global_step=self.global_step)
+            self.optimizer = tf.train.AdamOptimizer(learning_rate=self.training_info['options']['lr']).minimize(self.mean_loss, global_step=self.global_step)
 
             
     def setup_logging(self):
@@ -85,10 +85,12 @@ class Evaluator(object):
             self.summary_op = tf.summary.merge_all()
 
 
-    def train(self, print_every=-1, save_every=-1, num_epochs=1):
-        self.num_epochs = num_epochs
-        self.print_every = print_every
-        self.save_every = save_every
+    def train(self):
+        self.num_epochs = self.training_info['options']['num_epochs']
+        self.print_every = self.training_info['params']['print_freq']
+        self.save_every = self.logging_info['options']['state_freq']
+        print(self.training_info['params'])
+        self.config = tf.ConfigProto()
 
         self.saver = tf.train.Saver()
         self.eval(eval_type='TRAIN')
@@ -165,37 +167,11 @@ class Evaluator(object):
 
             
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Run CNNs with various nonlinearities')
-    parser.add_argument('-network', default='abs', choices=Networks)
-    parser.add_argument('-logdir', default='graphs/')
-    parser.add_argument('-savedir', default='checkpoints/')    
-    parser.add_argument('-epochs', default=5, type=np.int)
-    parser.add_argument('-batch_size', default=64, type=np.int)
-    parser.add_argument('-print_every', default=100, type=np.int)
-    parser.add_argument('-save_every', default=10, type=np.int)
-    parser.add_argument('-datadir', default='cs231n/datasets/cifar-10-batches-py', type=str)
-    parser.add_argument('-train_size', default=49000, type=np.int)
-    parser.add_argument('-val_size', default=1000, type=np.int)
-    parser.add_argument('-test_size', default=1000, type=np.int)
-    parser.add_argument('-lr', default=0.01, type=np.float)
-    args = parser.parse_args()
+    configfile = '/home/christine/projects/convnet/config/small_train.ini'
 
-    # Invoke the above function to get our data.
-    # config = tf.ConfigProto(allow_soft_placement=True, log_device_placement=True)
-    config=None
-    network_name = args.network
-    logdir = args.logdir
-    savedir = args.savedir
-    evaluator = Evaluator(network_type=network_name, data_type='CIFAR10', logdir=logdir, savedir=savedir, config=config)
+    evaluator = Evaluator(configfile)
 
-    datadir = args.datadir
-    num_training = args.train_size
-    num_validation = args.val_size
-    num_test = args.test_size
-    batch_size = args.batch_size
-    learning_rate = args.lr
-    evaluator.setup(datadir, num_training, num_validation, num_test, batch_size, learning_rate)
+    evaluator.setup()
 
-    num_epochs = args.epochs
-    evaluator.train(print_every=args.print_every, save_every=args.save_every, num_epochs=num_epochs)
+    evaluator.train()
     evaluator.test()

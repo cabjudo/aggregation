@@ -45,14 +45,13 @@ def load_CIFAR10(ROOT):
 
 
 def get_CIFAR10_data(num_training=49000, num_validation=1000, num_test=1000,
-                     subtract_mean=True, cifar10_dir='cs231n/datasets/cifar-10-batches-py'):
+                     subtract_mean=True, cifar10_dir='/home/christine/projects/convnet/cs231n/datasets/cifar-10-batches-py'):
     """
     Load the CIFAR-10 dataset from disk and perform preprocessing to prepare
     it for classifiers. These are the same steps as we used for the SVM, but
     condensed to a single function.
     """
     # Load the raw CIFAR-10 data
-    
     X_train, y_train, X_test, y_test = load_CIFAR10(cifar10_dir)
 
     # Subsample the data
@@ -248,7 +247,7 @@ def load_imagenet_val(num=None):
     - y: numpy array of integer image labels, shape [num]
     - class_names: dict mapping integer label to class name
     """
-    imagenet_fn = 'cs231n/datasets/imagenet_val_25.npz'
+    imagenet_fn = '/home/christine/projects/convnet/cs231n/datasets/imagenet_val_25.npz'
     if not os.path.isfile(imagenet_fn):
       print('file %s not found' % imagenet_fn)
       print('Run the following:')
@@ -268,11 +267,10 @@ def load_imagenet_val(num=None):
 
 
 class Data(object):
-    def __init__(self, datadir, num_training=49000, num_validation=1000, num_test=1000 ):
-        self.datadir = datadir
-        self.num_training = num_training
-        self.num_validation = num_validation
-        self.num_test = num_test
+    # def __init__(self, datadir, num_training=49000, num_validation=1000, num_test=1000 ):
+    def __init__(self, dataset_info):
+        self.dataset_options = dataset_info['options']
+        self.dataset_params = dataset_info['params']
         
         self.get_data()
         self.build_tf_datasets()
@@ -286,7 +284,10 @@ class Data(object):
 
 class DataCIFAR10(Data):
     def get_data(self):
-        self.data = get_CIFAR10_data(cifar10_dir=self.datadir, num_training=self.num_training, num_validation=self.num_validation, num_test=self.num_test)
+        self.data = get_CIFAR10_data(cifar10_dir=self.dataset_options['datadir'],
+                                     num_training=self.dataset_params['train_size'],
+                                     num_validation=self.dataset_params['val_size'],
+                                     num_test=self.dataset_params['test_size'])
         
     def build_tf_datasets(self):
         with tf.name_scope('data'):
@@ -294,11 +295,11 @@ class DataCIFAR10(Data):
             self.train_data = self.train_data.map(lambda x,y: (tf.cast(x, tf.float32), tf.one_hot(y, 10)))
             # validation data, size: 1000
             self.val_data = tf.data.Dataset.from_tensor_slices((self.data['X_val'], self.data['y_val']))
-            self.val_data = self.val_data.batch(self.num_validation)
+            self.val_data = self.val_data.batch(self.dataset_params['val_size'])
             self.val_data = self.val_data.map(lambda x,y: (tf.cast(x, tf.float32), tf.one_hot(y, 10)))
             # test data, size: 1000
             self.test_data = tf.data.Dataset.from_tensor_slices((self.data['X_test'], self.data['y_test']))
-            self.test_data = self.test_data.batch(self.num_test)
+            self.test_data = self.test_data.batch(self.dataset_params['test_size'])
             self.test_data = self.test_data.map(lambda x,y: (tf.cast(x, tf.float32), tf.one_hot(y, 10)))
         
 

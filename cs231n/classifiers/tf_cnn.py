@@ -1,12 +1,6 @@
 import tensorflow as tf
 import numpy as np
 
-# Architectures
-smallNet = { 'indim': [ 32, 32, 3 ], 
-             'filters': [16, 16, 16, 16, 16, 16, 10],
-             'strides': [1, 1, 2, 1, 1, 2, 1],
-             'padding': ['valid', 'valid', 'valid', 'valid', 'valid', 'valid', 'valid'],
-             'kernel_size' : [ 3, 3, 3, 3, 3, 3, 4 ] }
 
 
 class Baseline(object):
@@ -21,7 +15,7 @@ class Baseline(object):
     N: dataset size
     C: number of classes
     '''
-    def __init__(self, img, label, arch=smallNet):
+    def __init__(self, img, label, arch):
         self.img = img
         self.label = label
         self.arch = arch
@@ -294,7 +288,6 @@ class ConvModelSelectMax(Baseline):
     def block(self, input_data, scope, filters=16, conv_strides=1, kernel_size=3, padding='valid'):
         with tf.variable_scope(scope):
             h = tf.layers.conv2d(input_data, filters=filters, kernel_size=3, strides=conv_strides, padding='valid', name='conv')
-            print(h.get_shape().as_list())
             # nh = tf.layers.batch_normalization(h, training=is_training, name='bn')
             a = self.tf_select_max(h)
 
@@ -321,15 +314,24 @@ Networks = { 'avg':ConvModelAvgPool,
 
 
 if __name__ == '__main__':
-    from cs231n.data_utils import Datasets
+    from convnet.cs231n.data_utils import Datasets
 
-    datadir = 'cs231n/datasets/cifar-10-batches-py'
-    dataset = Datasets['CIFAR10'](datadir)
-    dataset.train_data = dataset.train_data.batch(64)
+    from convnet.util.config_reader import get_model
+    from convnet.util.config_reader import get_dataset
+    from convnet.util.config_reader import get_training
 
-    for key,value in Networks.iteritems():
+    configfile = '/home/christine/projects/convnet/config/default.ini'
+    model_info = get_model(configfile)
+    dataset_info = get_dataset(configfile)
+    training_info = get_training(configfile)
+
+    # datadir = 'cs231n/datasets/cifar-10-batches-py'
+    dataset = Datasets['CIFAR10'](dataset_info)
+    dataset.train_data = dataset.train_data.batch(training_info['options']['batch_size'])
+
+    for key,value in Networks.items():
         tf.reset_default_graph()
         iterator = tf.data.Iterator.from_structure(dataset.train_data.output_types, dataset.train_data.output_shapes)
         img, label = iterator.get_next()
-        relunet = Networks[key](img, label)
+        relunet = Networks[key](img, label, arch=model_info['params'])
         print(key + ' completed')

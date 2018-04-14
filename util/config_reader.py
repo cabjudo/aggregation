@@ -2,7 +2,7 @@ import configparser
 import argparse
 
 config = configparser.ConfigParser()
-config.read_dict({'dataset_options': {'datadir': 'cs231n/datasets/cifar-10-batches-py',
+config.read_dict({'dataset_options': {'datadir': '/home/christine/projects/convnet/cs231n/datasets/cifar-10-batches-py',
                                       'data_type': 'CIFAR10'},
                   'dataset_params': {'train_size': 49000,
                                      'test_size': 1000,
@@ -116,6 +116,33 @@ def get_training_params(configfile):
     
     return training_params
 
+
+def get_dataset(configfile):
+    dataset_options = get_dataset_options(configfile)
+    dataset_params = get_dataset_params(configfile)
+
+    return {'options': dataset_options, 'params': dataset_params}
+
+
+def get_model(configfile):
+    model_options = get_model_options(configfile)
+    model_params = get_model_params(configfile)
+
+    return {'options': model_options, 'params': model_params}
+
+
+def get_logging(configfile):
+    logging_options = get_logging_options(configfile)
+    logging_params = get_logging_params(configfile)
+
+    return {'options': logging_options, 'params': logging_params}
+
+
+def get_training(configfile):
+    training_options = get_training_options(configfile)
+    training_params = get_training_params(configfile)
+
+    return {'options': training_options, 'params': training_params}
 
 
 if __name__ == '__main__':
