@@ -2,7 +2,7 @@ import configparser
 import argparse
 
 config = configparser.ConfigParser()
-config.read_dict({'dataset_options': {'datadir': '/home/christine/projects/convnet/cs231n/datasets/cifar-10-batches-py',
+config.read_dict({'dataset_options': {'datadir': '/home/christine/projects/convnet/datasets/cifar-10-batches-py',
                                       'data_type': 'CIFAR10'},
                   'dataset_params': {'train_size': 49000,
                                      'test_size': 1000,

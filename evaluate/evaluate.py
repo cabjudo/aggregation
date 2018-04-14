@@ -4,8 +4,8 @@ import argparse
 import numpy as np
 import tensorflow as tf
 
-from convnet.cs231n.data_utils import Datasets
-from convnet.cs231n.classifiers.tf_cnn import Networks
+from convnet.util.data_utils import Datasets
+from convnet.classifiers.tf_cnn import Networks
 from convnet.util.tf_logging import TfLogger
 
 from convnet.util.config_reader import get_training
