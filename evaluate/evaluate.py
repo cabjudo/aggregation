@@ -83,83 +83,118 @@ class Evaluator(object):
         train_size = self.dataset_info['params']['train_size']
         batch_size = self.training_info['options']['batch_size']
         steps_per_epoch = np.ceil( train_size / batch_size )
-        
+
+        # convert from print_freq to print_every
         print_freq = self.training_info['params']['print_freq']
         self.print_every = steps_per_epoch / print_freq
+
+        # convert from save_freq to save_every
         save_freq = self.logging_info['options']['state_freq']
         self.save_every = steps_per_epoch / save_freq
 
         self.config = tf.ConfigProto()
 
-        self.eval(eval_type='TRAIN')
+        self.evaluate(eval_type='TRAIN')
 
         
     def test(self):
-        self.eval(eval_type='TEST')
+        self.evaluate(eval_type='TEST')
 
         
-    def eval(self, eval_type='TRAIN'):
-        step = 0
-        with tf.Session(config=self.config) as sess:
-            self.tflogger.associate(sess)
-            sess.run(tf.global_variables_initializer())
-            with self.tflogger as tfl:
-                if eval_type == 'TRAIN':
-                    for _ in range(self.num_epochs):
-                        step = self.eval_train(sess, step)
-                        self.eval_val(sess, step)
-                        
-                if eval_type == 'TEST':
-                    self.eval_test(sess)
+    def evaluate(self, eval_type='TRAIN'):
+        self.step = 0
+        self.sess = tf.Session(config=self.config)
+        
+        # associate the logger with this session
+        self.tflogger.associate(self.sess)
+        
+        # initialize all variables
+        self.sess.run(tf.global_variables_initializer())
+
+        # with logger as context manager
+        with self.tflogger as tfl:
+            if eval_type == 'TRAIN':
+                for _ in range(self.num_epochs):
+                    # train for num_epochs
+                    self.step = self.eval_train()
+                    # look at results on validation after each epoch
+                    self.eval_val()
+                    
+            if eval_type == 'TEST':
+                self.eval_test()
+        # close the session
+        self.sess.close()
 
             
-    def eval_train(self, sess, step):
-        sess.run(self.train_init)
+    def eval_train(self):
+        # initialize iterator
+        self.sess.run(self.train_init)
         try:
             while True:
-                _, a, l = sess.run([self.optimizer, self.accuracy, self.mean_loss])
-                if (step % self.print_every) == 0:
-                    print('accuracy: ', a, 'loss: ', l, 'step: ', step)
-
-                self.tflogger.step(step, self.save_every, self.global_step, writer_type='TRAIN')
-                step += 1
+                # train (optim), and report accuracy and loss for user
+                _, a, l = self.sess.run([self.optimizer, self.accuracy, self.mean_loss])
+                if (self.step % self.print_every) == 0:
+                    print('accuracy: ', a, 'loss: ', l, 'step: ', self.step)
+                # notify logger, it will save if necessary
+                self.tflogger.step(self.step, self.save_every, self.global_step, writer_type='TRAIN')
+                self.step += 1
                         
         except tf.errors.OutOfRangeError:
+            # print('eval_train: caught outofrangeerror')
             pass
 
-        return step
+        return self.step
 
         
-    def eval_val(self, sess, step):
-        sess.run(self.val_init)
+    def eval_val(self):
+        self.sess.run(self.val_init)
         try:
             while True:
-                a = sess.run(self.accuracy)
+                a = self.sess.run(self.accuracy)
                 print('validation accuracy: ', a)
-                self.tflogger.step(step, 1, step, writer_type='VAL')
+                self.tflogger.step(self.step, 1, self.global_step, writer_type='VAL')
                 
         except tf.errors.OutOfRangeError:
+            # print('eval_val: caught outofrangeerror')
             pass
 
             
-    def eval_test(self, sess):
-        sess.run(self.test_init)
+    def eval_test(self):
+        self.sess.run(self.test_init)
         try:
             while True:
-                a = sess.run([self.accuracy])
+                a = self.sess.run([self.accuracy])
                 print('test accuracy: ', a)
                 
         except tf.errors.OutOfRangeError:
+            # print('eval_test: caught outofrangeerror')
             pass
 
 
+    def clean_up(self):
+        try:
+            # print('in trainers cleanup routine')
+            pass
+        except tf.errors.OutOfRangeError:
+            # print('clean_up: caught OutOfRangeError')
+            pass
+        finally:
+            # print('in trainers cleanup routine')
+            self.tflogger.step(self.step, 1, self.global_step, writer_type='TRAIN')
+            self.tflogger.sess.close()
+
+        
             
 if __name__ == "__main__":
+    from convnet.util.graceful_exit import GracefulExit
+    
     configfile = '/home/christine/projects/convnet/config/small_train.ini'
+    time_limit = 60*60
 
     evaluator = Evaluator(configfile)
-
     evaluator.setup()
 
-    evaluator.train()
-    # evaluator.test()
+    with GracefulExit(time_limit, evaluator) as ge:
+        ge.evaluate()
+
+    evaluator.test()

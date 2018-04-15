@@ -32,7 +32,7 @@ class GracefulExit:
             print('GracefulExitException supressed by context manager')
             return True
 
-    def train(self, *args, **kwargs):
+    def evaluate(self, *args, **kwargs):
         self.trainer.train(*args, **kwargs)
 
     def clean_up(self, *args, **kwargs):
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         def __init__(self, amt_of_time):
             self.amt_of_time = amt_of_time
 
-        def train(self):
+        def evaluate(self):
             time.sleep(self.amt_of_time)
 
         def clean_up(self):
@@ -80,12 +80,11 @@ if __name__ == '__main__':
             time.sleep(10)
             
 
-
+    
     dt = DummyTrainer(another_amt_of_time)
 
     with GracefulExit(some_amt_of_time, dt) as ge:
-        print(ge)
-        ge.train()
+        ge.evaluate()
 
 
 
