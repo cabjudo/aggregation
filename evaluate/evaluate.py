@@ -119,7 +119,10 @@ class Evaluator(object):
                     self.step = self.eval_train()
                     # look at results on validation after each epoch
                     self.eval_val()
-                    
+                # what are the test results?
+                # test results should only be run once
+                # self.eval_test()
+                
             if eval_type == 'TEST':
                 self.eval_test()
         # close the session
@@ -197,4 +200,3 @@ if __name__ == "__main__":
     with GracefulExit(time_limit, evaluator) as ge:
         ge.evaluate()
 
-    evaluator.test()

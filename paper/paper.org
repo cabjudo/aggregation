@@ -110,9 +110,6 @@ Considering alternative nonlinearities on the CIFAR10 dataset with smallNet.
 |----------------------+--------------------------------|
 
 
-[[~/projects/convnet/paper/nonlinearities_lr1e-3_smallNet.sh][select smallNet]]
-
-
 |-----------------|
 | Method          |
 |-----------------|
@@ -122,7 +119,15 @@ Considering alternative nonlinearities on the CIFAR10 dataset with smallNet.
 | Abs             |
 |-----------------|
 
+#+CAPTION: Training results for aggregation methods
+#+NAME:   fig:aggregation
+#+ATTR_LATEX: :width 0.9\textwidth :placement [h!]
+[[./figures/aggregation.eps]]
 
+#+CAPTION: Training results for alternative nonlinearities
+#+NAME:   fig:nonlinearities
+#+ATTR_LATEX: :width 0.9\textwidth :placement [h!]
+[[./figures/nonlinearity.eps]]
 
 Modified the DenseNet architecture ([[https://github.com/ikhlestov/vision_networks][tensorflow implementation]]) replacing all instances of tf.nn.relu with our 
 max-aggregation component.
@@ -133,6 +138,8 @@ max-aggregation component.
 | Densenet-max-agg | CIFAR10 |        |        |    79.03 |
 | Densenet         | CIFAR10 |        |        |          |
 |------------------+---------+--------+--------+----------|
+
+
 * Discussion
 Experiments are performed by replacing the relu in convolutional architectures which fit the proposed interpretation, for example VGG
 which uses strictly hierarchical processing whereas DenseNet uses skip connections which possibly a different paradigm.
